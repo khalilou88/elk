@@ -40,7 +40,7 @@ jobs:
       #   run: docker-compose config
 
       - name: Pull Docker images
-        run: docker-compose pull
+        run: docker-compose -f docker-compose.yml pull
 
       - name: Start ELK Stack
         run: docker-compose up -d
