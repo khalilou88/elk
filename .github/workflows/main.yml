@@ -17,9 +17,18 @@ jobs:
       - name: Set up Docker
         uses: docker/setup-docker-action@v4
 
-      - name: Check Docker and Docker Compose versions
+      - name: Install Docker Compose
         run: |
-          docker --version
+          # Remove existing Docker Compose if exists
+          sudo apt-get remove docker-compose
+          
+          # Download latest Docker Compose
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+          
+          # Apply executable permissions
+          sudo chmod +x /usr/local/bin/docker-compose
+          
+          # Verify installation
           docker-compose --version
 
       - name: Create necessary directories
