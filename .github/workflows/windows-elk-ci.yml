@@ -1,0 +1,90 @@
+name: Windows ELK Stack CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  windows-test:
+    runs-on: windows-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
+
+      - name: Install Docker Compose
+        run: choco install docker-compose
+
+      - name: Prepare Data Directory
+        run: |
+          mkdir -p data\elasticsearch
+          icacls data\elasticsearch /grant "Everyone:(OI)(CI)F"
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config
+
+      - name: Pull Docker Images
+        run: docker compose pull
+
+      - name: Start ELK Stack
+        run: docker compose up -d
+
+      - name: Wait for Services
+        run: |
+          Start-Sleep -Seconds 180
+          docker compose ps
+
+      - name: Check Elasticsearch Health
+        run: |
+          $maxAttempts = 10
+          $attempt = 0
+          while ($attempt -lt $maxAttempts) {
+            try {
+              $response = Invoke-WebRequest -Uri "http://localhost:9200/_cluster/health" -Method Get
+              if ($response.StatusCode -eq 200) {
+                Write-Host "Elasticsearch is healthy"
+                exit 0
+              }
+            }
+            catch {
+              Write-Host "Elasticsearch not ready yet..."
+            }
+            $attempt++
+            Start-Sleep -Seconds 15
+          }
+          Write-Host "Elasticsearch health check failed"
+          exit 1
+
+      - name: Output Service Logs on Failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop ELK Stack
+        run: docker compose down
+
+      #   - name: Slack Notification on Failure
+      #     if: failure()
+      #     uses: 8398a7/action-slack@v3
+      #     with:
+      #       status: ${{ job.status }}
+      #       fields: repo,message,commit,author,action,eventName,ref,workflow
+      #     env:
+      #       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Cache Docker Images
+        uses: actions/cache@v3
+        with:
+          path: C:\ProgramData\Docker\windowsfilter
+          key: ${{ runner.os }}-docker-${{ hashFiles('**/docker-compose.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
