@@ -1,4 +1,4 @@
-name: ELK Stack CI
+name: Ubuntu ELK Stack CI
 
 on:
   push:

@@ -1,4 +1,4 @@
-name: macOS ELK Stack CI
+name: MacOS ELK Stack CI
 
 on:
   push:
