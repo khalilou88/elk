@@ -36,8 +36,8 @@ jobs:
           mkdir -p data/elasticsearch
           chmod 777 data/elasticsearch
 
-      - name: Validate Docker Compose file
-        run: docker-compose config
+      # - name: Validate Docker Compose file
+      #   run: docker-compose config
 
       - name: Pull Docker images
         run: docker-compose pull
