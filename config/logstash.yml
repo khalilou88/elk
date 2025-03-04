@@ -1,0 +1,15 @@
+node.name: elk-logstash-node
+path.data: /usr/share/logstash/data
+http.host: "0.0.0.0"
+path.logs: /usr/share/logstash/logs
+log.level: info
+
+pipeline:
+  workers: 2
+  batch:
+    size: 125
+    delay: 50
+
+config.reload.automatic: true
+config.reload.interval: 3s
+queue.type: memory
