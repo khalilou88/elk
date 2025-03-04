@@ -14,71 +14,64 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: "3.10"
+      - name: Set up Docker
+        uses: docker/setup-docker-action@v4
 
-      - name: Install Homebrew Dependencies
+      - name: Install Docker Compose
         run: |
-          brew update
-          brew install docker docker-compose
-          brew services start docker
+          # Remove existing Docker Compose if exists
+          sudo apt-get remove docker-compose
 
-      - name: Prepare Data Directory
+          # Download latest Docker Compose
+          sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
+
+          # Apply executable permissions
+          sudo chmod +x /usr/local/bin/docker-compose
+
+          # Verify installation
+          docker-compose --version
+
+      - name: Create necessary directories
         run: |
           mkdir -p data/elasticsearch
           chmod 777 data/elasticsearch
 
-      - name: Validate Docker Compose Configuration
-        run: docker compose config
+      - name: Validate Docker Compose file
+        run: docker-compose config
 
-      - name: Pull Docker Images
-        run: docker compose pull
+      - name: Pull Docker images
+        run: docker-compose pull
 
       - name: Start ELK Stack
-        run: docker compose up -d
+        run: docker-compose up -d
 
-      - name: Wait for Services
+      - name: Wait for services to be ready
         run: |
-          sleep 120
-          docker compose ps
+          sleep 90  # Increased wait time for services to fully start
+          docker-compose ps
 
-      - name: Check Elasticsearch Health
+      - name: Check Elasticsearch health
         run: |
-          max_attempts=10
-          attempt=0
-          while [ $attempt -lt $max_attempts ]; do
-            if curl -f http://localhost:9200/_cluster/health?wait_for_status=green&timeout=60s; then
-              echo "Elasticsearch is healthy"
-              exit 0
-            fi
-            attempt=$((attempt+1))
-            sleep 15
-          done
-          echo "Elasticsearch health check failed"
-          exit 1
+          docker-compose exec -T elasticsearch curl -f http://localhost:9200/_cluster/health?wait_for_status=green&timeout=60s
 
-      - name: Output Service Logs on Failure
+      - name: Check Kibana is running
+        run: |
+          docker-compose exec -T kibana curl -f http://localhost:5601/api/status
+
+      - name: Check Logstash logs
+        run: docker-compose logs logstash
+
+      - name: Show Docker logs on failure
         if: failure()
-        run: docker compose logs
+        run: |
+          echo "Elasticsearch Logs:"
+          docker-compose logs elasticsearch
+          echo "\n\nKibana Logs:"
+          docker-compose logs kibana
+          echo "\n\nLogstash Logs:"
+          docker-compose logs logstash
+          echo "\n\nFilebeat Logs:"
+          docker-compose logs filebeat
 
       - name: Stop ELK Stack
-        run: docker compose down
-
-      #   - name: Slack Notification on Failure
-      #     if: failure()
-      #     uses: 8398a7/action-slack@v3
-      #     with:
-      #       status: ${{ job.status }}
-      #       fields: repo,message,commit,author,action,eventName,ref,workflow
-      #     env:
-      #       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
-
-      - name: Cache Docker Images
-        uses: actions/cache@v3
-        with:
-          path: ~/Library/Caches/Docker
-          key: ${{ runner.os }}-docker-${{ hashFiles('**/docker-compose.yml') }}
-          restore-keys: |
-            ${{ runner.os }}-docker-
+        run: docker-compose down
