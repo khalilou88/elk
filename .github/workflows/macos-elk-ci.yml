@@ -1,0 +1,84 @@
+name: macOS ELK Stack CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+
+jobs:
+  macos-test:
+    runs-on: macos-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install Homebrew Dependencies
+        run: |
+          brew update
+          brew install docker docker-compose
+          brew services start docker
+
+      - name: Prepare Data Directory
+        run: |
+          mkdir -p data/elasticsearch
+          chmod 777 data/elasticsearch
+
+      - name: Validate Docker Compose Configuration
+        run: docker compose config
+
+      - name: Pull Docker Images
+        run: docker compose pull
+
+      - name: Start ELK Stack
+        run: docker compose up -d
+
+      - name: Wait for Services
+        run: |
+          sleep 120
+          docker compose ps
+
+      - name: Check Elasticsearch Health
+        run: |
+          max_attempts=10
+          attempt=0
+          while [ $attempt -lt $max_attempts ]; do
+            if curl -f http://localhost:9200/_cluster/health?wait_for_status=green&timeout=60s; then
+              echo "Elasticsearch is healthy"
+              exit 0
+            fi
+            attempt=$((attempt+1))
+            sleep 15
+          done
+          echo "Elasticsearch health check failed"
+          exit 1
+
+      - name: Output Service Logs on Failure
+        if: failure()
+        run: docker compose logs
+
+      - name: Stop ELK Stack
+        run: docker compose down
+
+      #   - name: Slack Notification on Failure
+      #     if: failure()
+      #     uses: 8398a7/action-slack@v3
+      #     with:
+      #       status: ${{ job.status }}
+      #       fields: repo,message,commit,author,action,eventName,ref,workflow
+      #     env:
+      #       SLACK_WEBHOOK_URL: ${{ secrets.SLACK_WEBHOOK }}
+
+      - name: Cache Docker Images
+        uses: actions/cache@v3
+        with:
+          path: ~/Library/Caches/Docker
+          key: ${{ runner.os }}-docker-${{ hashFiles('**/docker-compose.yml') }}
+          restore-keys: |
+            ${{ runner.os }}-docker-
