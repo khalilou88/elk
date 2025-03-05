@@ -1,12 +1,13 @@
 version: '3.8'
 services:
   elasticsearch:
-    image: docker.elastic.co/elasticsearch/elasticsearch:7.14.0
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.12.2
     container_name: elasticsearch
     environment:
       - discovery.type=single-node
       - bootstrap.memory_lock=true
       - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+      - xpack.security.enabled=false  # Disable security for simplicity
     ports:
       - "9200:9200"
       - "9300:9300"
@@ -18,7 +19,7 @@ services:
         hard: -1
 
   logstash:
-    image: docker.elastic.co/logstash/logstash:7.14.0
+    image: docker.elastic.co/logstash/logstash:8.12.2
     container_name: logstash
     volumes:
       - ./config/logstash.conf:/usr/share/logstash/pipeline/logstash.conf
@@ -29,7 +30,7 @@ services:
       - elasticsearch
 
   kibana:
-    image: docker.elastic.co/kibana/kibana:7.14.0
+    image: docker.elastic.co/kibana/kibana:8.12.2
     container_name: kibana
     ports:
       - "5601:5601"
@@ -39,7 +40,7 @@ services:
       - elasticsearch
 
   filebeat:
-    image: docker.elastic.co/beats/filebeat:7.14.0
+    image: docker.elastic.co/beats/filebeat:8.12.2
     container_name: filebeat
     volumes:
       - ./config/filebeat.yml:/usr/share/filebeat/filebeat.yml
