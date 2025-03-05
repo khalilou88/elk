@@ -1,10 +1,13 @@
 name: ELK Stack CI
 
 on:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 2 * * *"
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
 
 jobs:
   test:
@@ -21,13 +24,13 @@ jobs:
         run: |
           # Remove existing Docker Compose if exists
           sudo apt-get remove docker-compose
-          
+
           # Download latest Docker Compose
           sudo curl -L "https://github.com/docker/compose/releases/latest/download/docker-compose-$(uname -s)-$(uname -m)" -o /usr/local/bin/docker-compose
-          
+
           # Apply executable permissions
           sudo chmod +x /usr/local/bin/docker-compose
-          
+
           # Verify installation
           docker-compose --version
 
