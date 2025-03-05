@@ -19,11 +19,12 @@ jobs:
         with:
           python-version: "3.10"
 
-      - name: Install Homebrew Dependencies
+      - name: Install Docker Desktop
         run: |
-          brew update
-          brew install docker docker-compose
-          brew services start docker
+          brew install --cask docker
+          open /Applications/Docker.app
+          sleep 30  # Give Docker time to start
+          docker info
 
       - name: Create necessary directories
         run: |
@@ -31,41 +32,41 @@ jobs:
           chmod 777 data/elasticsearch
 
       - name: Validate Docker Compose file
-        run: docker-compose config
+        run: docker compose config
 
       - name: Pull Docker images
-        run: docker-compose pull
+        run: docker compose pull
 
       - name: Start ELK Stack
-        run: docker-compose up -d
+        run: docker compose up -d
 
       - name: Wait for services to be ready
         run: |
           sleep 90  # Increased wait time for services to fully start
-          docker-compose ps
+          docker compose ps
 
       - name: Check Elasticsearch health
         run: |
-          docker-compose exec -T elasticsearch curl -f http://localhost:9200/_cluster/health?wait_for_status=green&timeout=60s
+          docker compose exec -T elasticsearch curl -f http://localhost:9200/_cluster/health?wait_for_status=green&timeout=60s
 
       - name: Check Kibana is running
         run: |
-          docker-compose exec -T kibana curl -f http://localhost:5601/api/status
+          docker compose exec -T kibana curl -f http://localhost:5601/api/status
 
       - name: Check Logstash logs
-        run: docker-compose logs logstash
+        run: docker compose logs logstash
 
       - name: Show Docker logs on failure
         if: failure()
         run: |
           echo "Elasticsearch Logs:"
-          docker-compose logs elasticsearch
+          docker compose logs elasticsearch
           echo "\n\nKibana Logs:"
-          docker-compose logs kibana
+          docker compose logs kibana
           echo "\n\nLogstash Logs:"
-          docker-compose logs logstash
+          docker compose logs logstash
           echo "\n\nFilebeat Logs:"
-          docker-compose logs filebeat
+          docker compose logs filebeat
 
       - name: Stop ELK Stack
-        run: docker-compose down
+        run: docker compose down
